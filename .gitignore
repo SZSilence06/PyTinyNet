@@ -1,1 +1,3 @@
 /**/*.pyc
+*.vs
+/example/ChatRoom/db

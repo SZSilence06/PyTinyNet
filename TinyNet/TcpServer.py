@@ -3,6 +3,9 @@ from Logger import *
 from Util import *
 
 _MAX_READ_SIZE = 256 * 1024
+_DEFAULT_KEEP_IDLE = 60
+_DEFAULT_KEEP_INTERVAL = 10
+_DRFAULT_KEEP_COUNT = 5
 
 class TcpConnection(object):
     def __init__(self, tcpSocket):
@@ -49,6 +52,10 @@ class TcpServer(object):
         self._onError_callback = lambda connection: None
         self._connections = []
 
+        self._keep_idle = _DEFAULT_KEEP_IDLE
+        self._keep_interval = _DEFAULT_KEEP_INTERVAL
+        self._keep_count = _DRFAULT_KEEP_COUNT
+
     def start(self):
         self._socket.listen()
         self._socket.onRead(lambda : self._handleAccept())
@@ -62,11 +69,15 @@ class TcpServer(object):
         tcpSock = TcpSocket.createFrom(socketObj)
         tcpSock.setEvents(EVENT_READ | EVENT_ERROR | EVENT_SHUTDOWN)
         tcpSock.keepAlive()
+        tcpSock.setKeepIdle(self._keep_idle)
+        tcpSock.setKeepInterval(self._keep_interval)
+        tcpSock.setKeepCount(self._keep_count)
         connection = TcpConnection(tcpSock)
 
         # set up callbacks
         tcpSock.onRead(lambda: self._handleRead(connection))
         tcpSock.onError(lambda: self._handleError(connection))
+        tcpSock.onShutdown(lambda: self._handleConnClose(connection))
 
         self._event_dispatcher.getPoller().addSocket(tcpSock)
         self._connections.append(connection)
@@ -75,7 +86,7 @@ class TcpServer(object):
     def _handleRead(self, connection):
         # test whether the connection has closed
         result = connection.peek(1024)
-        if(result == ""):  # connection closed
+        if result == "":  # connection closed
             self._handleConnClose(connection)
         else:
             self._onRead_callback(connection)
@@ -91,8 +102,8 @@ class TcpServer(object):
     def _handleError(self, connection):
         TN_INFO("connection to " + 
             Util.addrToStr(connection.getRemoteAddr()) +
-            "encountered an error.")
-        self._onError_callback()
+            " encountered an error.")
+        self._onError_callback(connection)
         self._connections.remove(connection)
         self._event_dispatcher.getPoller().removeSocket(connection._socket)
 
@@ -105,5 +116,13 @@ class TcpServer(object):
     def onError(self, callback):
         self._onError_callback = callback
 
+    def setKeepIdle(self, value):
+        self._keep_idle = value
+
+    def setKeepInterval(self, value):
+        self._keep_interval = value
+
+    def setKeepCount(self, value):
+        self._keep_count = value
 
     

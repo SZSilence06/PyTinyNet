@@ -99,6 +99,16 @@ class MainServer(TcpServer):
             connection_data['bytes_to_read'] = read_length
         request = connection.read(read_length)
         connection_data['bytes_to_read'] -= read_length
+        if 'readed_data' not in connection_data:
+            connection_data['readed_data'] = request
+        else:
+            connection_data['readed_data'] += request
+
+        if connection_data['bytes_to_read'] != 0:
+            return
+
+        request = connection_data['readed_data']
+        connection_data['readed_data'] = ""
 
         try:
             self.parseRequest(connection, request)
@@ -122,7 +132,7 @@ class MainServer(TcpServer):
 
     def mainServerOnConnClose(self, connection):
         if 'user' in connection.userData():
-            # user log out
+            # user log out                                                                                                                                                                                                                            ut
             self.logout(connection['user'])
 
     def parseRequest(self, connection, request):
@@ -136,7 +146,7 @@ class MainServer(TcpServer):
     def onAction(self, action, connection, decoded_request):
         if(action == 'register'):
             self.onRegister(connection, decoded_request)
-        elif(action == 'login'):
+        elif(action == 'login'):                                                
             self.onLogin(connection, decoded_request)
         elif(action == 'broadcast'):
             self.onBroadcast(connection, decoded_request)
@@ -187,6 +197,15 @@ class MainServer(TcpServer):
         if(dao.getPassword(username) != password):
             raise RequestFailedError('Wrong password.')
 
+        # check whether user has been online
+        for onlined_user in self._online_users:
+            if username == onlined_user.getName():
+                user_connection = onlined_user.getConnection()
+                if user_connection.getRemoteAddr() != connection.getRemoteAddr():
+                    raise RequestFailedError('This user has already logined on another computer.')
+                else:
+                    self.logout(user)
+        
         user = User(username, connection)
         self._online_users.append(user)
         user.setLoginTime(datetime.now())

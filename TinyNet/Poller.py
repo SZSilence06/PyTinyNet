@@ -54,8 +54,10 @@ class PollerEpoll(PollerImpl):
             socket = self._living_sockets[fd]
             if(event & EVENT_ERROR):
                 socket.handleError()
+                continue
             if(event & EVENT_SHUTDOWN):
                 socket.handleShutdown()
+                continue
             if(event & EVENT_READ):
                 socket.handleRead()
             if(event & EVENT_WRITE):

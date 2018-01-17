@@ -16,6 +16,7 @@ class Socket(object):
         self._onRead_callback = lambda: None
         self._onWrite_callback = lambda: None
         self._onError_callback = lambda: None
+        self._onShutdown_callback = lambda: None
         self._max_queue_size = _DEFAULT_MAX_QUEUE_SIZE
         
     def getSocket(self):
@@ -45,6 +46,12 @@ class Socket(object):
     def handleError(self):
         self._onError_callback()
 
+<<<<<<< HEAD
+=======
+    def handleShutdown(self):
+        self._onShutdown_callback()
+
+>>>>>>> server
     def onRead(self, callback):
         self._onRead_callback = callback
     
@@ -54,6 +61,12 @@ class Socket(object):
     def onError(self, callback):
         self._onError_callback = callback
 
+<<<<<<< HEAD
+=======
+    def onShutdown(self, callback):
+        self._onShutdown_callback = callback
+
+>>>>>>> server
     def setMaxQueueSize(self, max_queue_size):
         self._max_queue_size = max_queue_size
 
@@ -114,7 +127,20 @@ class TcpSocket(Socket):
         return self.getRemoteAddr()[0]
 
     def getRemotePort(self):
+<<<<<<< HEAD
         return self.getRemoteAddr()[1]    
+=======
+        return self.getRemoteAddr()[1]
+
+    def setKeepIdle(self, value):
+        self._socket.setsockopt(SOL_TCP, TCP_KEEPIDLE, value)
+
+    def setKeepInterval(self, value):
+        self._socket.setsockopt(SOL_TCP, TCP_KEEPINTVL, value)
+
+    def setKeepCount(self, value):
+        self._socket.setsockopt(SOL_TCP, TCP_KEEPCNT, value)    
+>>>>>>> server
 
     
 
