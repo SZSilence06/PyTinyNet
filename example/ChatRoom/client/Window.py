@@ -104,7 +104,7 @@ class MainWindow(Window):
 
     def _task_register(self, username, password):
         try:
-            client = MainClient()
+            client = MainClient(self._app)
             client.connect((_serverIp, _serverPort))
             request = Request()
             request['action'] = 'register'
