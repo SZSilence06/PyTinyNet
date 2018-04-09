@@ -98,7 +98,7 @@ class MainServer(TcpServer):
             read_length = unpack('!l', connection.read(4))[0]
             connection_data['bytes_to_read'] = read_length
         request = connection.read(read_length)
-        connection_data['bytes_to_read'] -= read_length
+        connection_data['bytes_to_read'] -= len(request)
         if 'readed_data' not in connection_data:
             connection_data['readed_data'] = request
         else:
@@ -178,7 +178,6 @@ class MainServer(TcpServer):
         
         dao.addUser(username, password)
         response = {'code' : Code.SUCCESS}
-        response['message'] = 'User successfully added.'
         connection.send(Protocol.makeMessageFromDict(response))
 
     def onLogin(self, connection, decoded_request):
@@ -212,7 +211,6 @@ class MainServer(TcpServer):
         connection['user'] = user
         TN_INFO(username + " logged in.")
         response = {'code' : Code.SUCCESS}
-        response['message'] = 'Successfully login.'
         response['online_time'] = dao.getOnlineTime(username)
         connection.send(Protocol.makeMessageFromDict(response))
 
