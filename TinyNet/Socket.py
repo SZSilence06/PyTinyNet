@@ -4,11 +4,16 @@ import select
 
 _DEFAULT_MAX_QUEUE_SIZE = 20
 
-if(platform.system() == 'Linux'):
+_sysType = platform.system()
+
+if(_sysType == 'Linux'):
     EVENT_READ = select.EPOLLIN
     EVENT_WRITE = select.EPOLLOUT
-    EVENT_SHUTDOWN = select.EPOLLHUP
     EVENT_ERROR = select.EPOLLERR
+else:
+    EVENT_READ = 0x01
+    EVENT_WRITE = 0x02
+    EVENT_ERROR = 0x04
 
 class Socket(object):
     def __init__(self):
@@ -16,7 +21,6 @@ class Socket(object):
         self._onRead_callback = lambda: None
         self._onWrite_callback = lambda: None
         self._onError_callback = lambda: None
-        self._onShutdown_callback = lambda: None
         self._max_queue_size = _DEFAULT_MAX_QUEUE_SIZE
         
     def getSocket(self):
@@ -46,9 +50,6 @@ class Socket(object):
     def handleError(self):
         self._onError_callback()
 
-    def handleShutdown(self):
-        self._onShutdown_callback()
-
     def onRead(self, callback):
         self._onRead_callback = callback
     
@@ -57,9 +58,6 @@ class Socket(object):
 
     def onError(self, callback):
         self._onError_callback = callback
-
-    def onShutdown(self, callback):
-        self._onShutdown_callback = callback
 
     def setMaxQueueSize(self, max_queue_size):
         self._max_queue_size = max_queue_size
@@ -124,12 +122,18 @@ class TcpSocket(Socket):
         return self.getRemoteAddr()[1]
 
     def setKeepIdle(self, value):
+        if _sysType == 'Windows':
+            return
         self._socket.setsockopt(SOL_TCP, TCP_KEEPIDLE, value)
 
     def setKeepInterval(self, value):
+        if _sysType == 'Windows':
+            return
         self._socket.setsockopt(SOL_TCP, TCP_KEEPINTVL, value)
 
     def setKeepCount(self, value):
+        if _sysType == 'Windows':
+            return
         self._socket.setsockopt(SOL_TCP, TCP_KEEPCNT, value)    
 
     

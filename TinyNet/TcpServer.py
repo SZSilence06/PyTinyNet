@@ -67,7 +67,7 @@ class TcpServer(object):
     def _handleAccept(self):
         socketObj, addr = self._socket.accept()
         tcpSock = TcpSocket.createFrom(socketObj)
-        tcpSock.setEvents(EVENT_READ | EVENT_ERROR | EVENT_SHUTDOWN)
+        tcpSock.setEvents(EVENT_READ | EVENT_ERROR)
         tcpSock.keepAlive()
         tcpSock.setKeepIdle(self._keep_idle)
         tcpSock.setKeepInterval(self._keep_interval)
@@ -77,7 +77,6 @@ class TcpServer(object):
         # set up callbacks
         tcpSock.onRead(lambda: self._handleRead(connection))
         tcpSock.onError(lambda: self._handleError(connection))
-        tcpSock.onShutdown(lambda: self._handleConnClose(connection))
 
         self._event_dispatcher.getPoller().addSocket(tcpSock)
         self._connections.append(connection)

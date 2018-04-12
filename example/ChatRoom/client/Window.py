@@ -13,7 +13,7 @@ from MainClient import *
 from Application import *
 from Model import *
 
-_serverIp = '192.168.153.128'
+_serverIp = '127.0.0.1'
 _serverPort = 2500
 
 def showError(message):

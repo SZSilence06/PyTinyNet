@@ -7,6 +7,8 @@ from Logger import *
 _DEFAULT_MAX_TIMEOUT = 20
 _DEFAULT_MAX_EVENTS = 1000
 
+_sysType = platform.system() 
+
 class PollerImpl(object):
     def __init__(self):
         self._timeout = _DEFAULT_MAX_TIMEOUT
@@ -24,54 +26,108 @@ class PollerImpl(object):
     def getMaxEvents(self):
         return self._max_events
 
-class PollerKqueue(PollerImpl):
-    pass # to be continued
+if _sysType == 'Darwin':
+    class PollerKqueue(PollerImpl):
+        pass # to be continued
 
-class PollerIocp(PollerImpl):
-    pass  # to be continued 
+elif _sysType == 'Windows':
+    class PollerIocp(PollerImpl):
+        def __init__(self):
+            pass
 
-class PollerEpoll(PollerImpl):
-    def __init__(self):
-        super(PollerEpoll, self).__init__()
-        self._epoll = select.epoll()
-        self._living_sockets = {}
+        def addSocket(self, socket):
+            pass
 
-    def addSocket(self, socket):
-        try:
+        def removeSocket(self, socket):
+            pass
+
+        def waitEvents(self):
+            pass
+
+elif _sysType == 'Linux':    
+    class PollerEpoll(PollerImpl):
+        def __init__(self):
+            super(PollerEpoll, self).__init__()
+            self._epoll = select.epoll()
+            self._living_sockets = {}
+
+        def addSocket(self, socket):
             self._epoll.register(socket.getSocket(), socket.getEvents())
             self._living_sockets[socket.getFd()] = socket
-        except error, e:
-            raise TinyNetError("Failed to add socket to poller! ") + str(e)
+            
+        def removeSocket(self, socket):
+            self._epoll.unregister(socket.getFd())
+            del self._living_sockets[socket.getFd()]
+            socket.close()
         
+        def waitEvents(self):
+            events = self._epoll.poll(self.getMaxTimeout(), self.getMaxEvents())
+            for fd, event in events:
+                socket = self._living_sockets[fd]
+                if(event & EVENT_ERROR):
+                    socket.handleError()
+                    continue
+                if(event & EVENT_READ):
+                    socket.handleRead()
+                if(event & EVENT_WRITE):
+                    socket.handleWrite()
+
+class PollerSelect(PollerImpl):
+    def __init__(self):
+        self._living_sockets = {}
+        self._rlist = [] # fd wait for reading
+        self._wlist = [] # fd wait for writing
+        self._xlist = [] # fd wait for exceptions
+
+    def addSocket(self, socket):
+        fd = socket.getFd()
+        self._living_sockets[fd] = socket
+
+        # register event listeners
+        events = socket.getEvents()
+        if(events & EVENT_READ):
+            self._rlist.append(fd)
+        if(events & EVENT_WRITE):
+            self._wlist.append(fd)
+        if(events & EVENT_ERROR):
+            self._xlist.append(fd)
+
     def removeSocket(self, socket):
-        self._epoll.unregister(socket.getFd())
-        del self._living_sockets[socket.getFd()]
-        socket.close()
-    
+        fd = socket.getFd()
+        del self._living_sockets[fd]
+
+        # remove event listeners
+        events = socket.getEvents()
+        if(events & EVENT_READ):
+            self._rlist.remove(fd)
+        if(events & EVENT_WRITE):
+            self._wlist.remove(fd)
+        if(events & EVENT_ERROR):
+            self._xlist.remove(fd)
+
     def waitEvents(self):
-        events = self._epoll.poll(self.getMaxTimeout(), self.getMaxEvents())
-        for fd, event in events:
-            socket = self._living_sockets[fd]
-            if(event & EVENT_ERROR):
-                socket.handleError()
-                continue
-            if(event & EVENT_SHUTDOWN):
-                socket.handleShutdown()
-                continue
-            if(event & EVENT_READ):
-                socket.handleRead()
-            if(event & EVENT_WRITE):
-                socket.handleWrite()                      
+        result = select.select(self._rlist, self._wlist, self._xlist, self._timeout)
+        rlist = result[0]
+        wlist = result[1]
+        xlist = result[2]
+        for fd in rlist:
+            self._living_sockets[fd].handleRead()
+        for fd in wlist:
+            self._living_sockets[fd].handleWrite()
+        for fd in xlist:
+            self._living_sockets[fd].handleError()                      
 
 class Poller(object):
     def __init__(self):
-        sysType = platform.system() 
-        if(sysType == 'Linux'):
+        global _sysType
+        if(_sysType == 'Linux'):
             self._poller = PollerEpoll()
-        elif(sysType == 'Windows'):
-            self._poller = PollerIocp()
-        elif(sysType == 'Darwin'):  # Mac OS X
-            self._poller = PollerKqueue()
+        elif(_sysType == 'Windows'):
+            # self._poller = PollerIocp()
+            self._poller = PollerSelect()
+        elif(_sysType == 'Darwin'):  # Mac OS X
+            # self._poller = PollerKqueue()
+            self._poller = PollerSelect()
         else:
             raise TinyNetError('Platform OS not supported.')
 
