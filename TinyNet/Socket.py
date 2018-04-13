@@ -1,4 +1,4 @@
-from socket import *
+import socket
 import platform
 import select
 
@@ -22,6 +22,7 @@ class Socket(object):
         self._onWrite_callback = lambda: None
         self._onError_callback = lambda: None
         self._max_queue_size = _DEFAULT_MAX_QUEUE_SIZE
+        self._nonBlock = False
         
     def getSocket(self):
         return self._socket
@@ -33,7 +34,7 @@ class Socket(object):
         self._socket.close()
 
     def shutdown(self):
-        self._socket.shutdown(SHUT_RDWR)
+        self._socket.shutdown(socket.SHUT_RDWR)
 
     def setEvents(self, events):
         self._events = events
@@ -63,7 +64,11 @@ class Socket(object):
         self._max_queue_size = max_queue_size
 
     def keepAlive(self, value=True):
-        self._socket.setsockopt(SOL_SOCKET, SO_KEEPALIVE, 1 if value else 0)
+        self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1 if value else 0)
+
+    def setNonBlock(self, nonBlock):
+        self._socket.setblocking(0)
+        self._nonBlock = nonBlock
 
 class TcpSocket(Socket):
     def __init__(self, addr=None):
@@ -76,7 +81,7 @@ class TcpSocket(Socket):
         if(addr is None):
             return
         
-        self._socket = socket(AF_INET, SOCK_STREAM)
+        self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._socket.bind(addr)
     
     @staticmethod
@@ -101,7 +106,7 @@ class TcpSocket(Socket):
         return self._socket.recv(length)
 
     def peek(self, length):
-        return self._socket.recv(length, MSG_PEEK)
+        return self._socket.recv(length, socket.MSG_PEEK)
 
     def getAddr(self):
         return self._socket.getsockname()
@@ -121,20 +126,23 @@ class TcpSocket(Socket):
     def getRemotePort(self):
         return self.getRemoteAddr()[1]
 
+    def getPendingError(self):
+        return error(self._socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR))
+
     def setKeepIdle(self, value):
         if _sysType == 'Windows':
             return
-        self._socket.setsockopt(SOL_TCP, TCP_KEEPIDLE, value)
+        self._socket.setsockopt(socket.SOL_TCP, socket.TCP_KEEPIDLE, value)
 
     def setKeepInterval(self, value):
         if _sysType == 'Windows':
             return
-        self._socket.setsockopt(SOL_TCP, TCP_KEEPINTVL, value)
+        self._socket.setsockopt(socket.SOL_TCP, socket.TCP_KEEPINTVL, value)
 
     def setKeepCount(self, value):
         if _sysType == 'Windows':
             return
-        self._socket.setsockopt(SOL_TCP, TCP_KEEPCNT, value)    
+        self._socket.setsockopt(socket.SOL_TCP, socket.TCP_KEEPCNT, value)    
 
     
 

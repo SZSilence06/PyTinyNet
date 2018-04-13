@@ -50,6 +50,7 @@ def TN_TRACE(message):
 class Logger(object):
     _instance = None
     _instance_lock = thread.allocate_lock()
+    _loglevel = LogLevel.INFO
 
     @staticmethod
     def getInstance():
@@ -61,14 +62,18 @@ class Logger(object):
         return Logger._instance
 
     def log(self, level, file, function, line, message):
-        stream = StringIO()
-        stream.write(_log_level_tag_[level])
-        stream.write("  ")
-        stream.write(strftime("%Y/%m/%d %H:%M:%S", gmtime()))
-        stream.write("  ")
-        stream.write(message)
-        stream.write("  ")
-        if(level <= LogLevel.WARNING):
-            stream.write(file + "," + function + "," + "line " + str(line))
-        print stream.getvalue()
+        if(level <= self._loglevel):
+            stream = StringIO()
+            stream.write(_log_level_tag_[level])
+            stream.write("  ")
+            stream.write(strftime("%Y/%m/%d %H:%M:%S", gmtime()))
+            stream.write("  ")
+            stream.write(message)
+            stream.write("  ")
+            if(level <= LogLevel.WARNING):
+                stream.write(file + "," + function + "," + "line " + str(line))
+            print stream.getvalue()
+
+    def setLogLevel(self, loglevel):
+        self._loglevel = loglevel
 

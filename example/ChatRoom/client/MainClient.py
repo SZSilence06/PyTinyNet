@@ -6,16 +6,18 @@ from struct import unpack
 from Queue import Queue
 from threading import Thread, Condition, Lock
 
-sys.path.append(os.path.dirname(os.path.realpath(__file__)))
-sys.path.append('../common')
+curDir = os.path.dirname(os.path.realpath(__file__))
+sys.path.append(curDir)
+sys.path.append(curDir + '/../common')
 
 from Model import *
 from Protocol import *
 from RequestError import *
 
-tinyNetDir = os.path.dirname(os.path.realpath(__file__)) + "/../../.."
-sys.path.append("../../..")
+tinyNetDir = curDir + "/../../.."
+sys.path.append(tinyNetDir)
 
+import TinyNet.Logger
 from TinyNet.TcpClient import *
 
 _DEFAULT_REQUEST_TIMEOUT = 60
@@ -102,6 +104,7 @@ class Receiver(Thread):
 
 class MainClient(TcpClient):
     def __init__(self, app):
+        TinyNet.Logger.Logger.getInstance().setLogLevel(LogLevel.DEBUG)
         super(MainClient, self).__init__()
         self._receiver = None
         self._closed = True
@@ -114,24 +117,10 @@ class MainClient(TcpClient):
         self._onDisconnected_callback = lambda: None
 
     def read(self):
-        inbuf = super(MainClient, self).recv(4)
-        if len(inbuf) == 0:
-            return inbuf
-        bytes_to_read = unpack("!l", inbuf)[0]
-        income_packages = []
-        while bytes_to_read > 0:
-            inbuf = super(MainClient, self).recv(bytes_to_read)
-            if len(inbuf) == 0:
-                return inbuf
-            income_packages.append(inbuf)
-            bytes_to_read -= len(inbuf)
-        complete_package = b''.join(income_packages)
-        message = unpack("!" + str(len(complete_package)) + "s", 
-            complete_package)[0]
-        return message
+        return super(MainClient, self).recv()
 
     def send(self, message):
-        super(MainClient, self).send(Protocol.makeMessage(message))
+        super(MainClient, self).send(message)
 
     def connect(self, addr):
         super(MainClient, self).connect(addr)

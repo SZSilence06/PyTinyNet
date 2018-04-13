@@ -9,10 +9,10 @@ from datetime import datetime, timedelta
 
 currentDir = os.path.dirname(os.path.realpath(__file__))
 tinyNetDir = currentDir + "/../../.."
-sys.path.append("../../..")
+sys.path.append(tinyNetDir)
 
-sys.path.append('.')
-sys.path.append('../common')
+sys.path.append(currentDir)
+sys.path.append(currentDir + '/../common')
 
 from TinyNet.EventDispatcher import *
 from TinyNet.TcpServer import *
@@ -89,27 +89,29 @@ class MainServer(TcpServer):
         self.onError(self.mainServerOnConnClose)
 
     def mainServerOnRead(self, connection):
-        connection_data = connection.userData()
-        if('bytes_to_read' not in connection_data):
-            connection_data['bytes_to_read'] = 0
-        read_length = connection_data['bytes_to_read']
-        if(read_length == 0):
-            # read the first 4 bytes of the incoming message to get message length
-            read_length = unpack('!l', connection.read(4))[0]
-            connection_data['bytes_to_read'] = read_length
-        request = connection.read(read_length)
-        connection_data['bytes_to_read'] -= len(request)
-        if 'readed_data' not in connection_data:
-            connection_data['readed_data'] = request
-        else:
-            connection_data['readed_data'] += request
+        # connection_data = connection.userData()
+        # if('bytes_to_read' not in connection_data):
+        #     connection_data['bytes_to_read'] = 0
+        # read_length = connection_data['bytes_to_read']
+        # if(read_length == 0):
+        #     # read the first 4 bytes of the incoming message to get message length
+        #     read_length = unpack('!l', connection.read(4))[0]
+        #     connection_data['bytes_to_read'] = read_length
+        # request = connection.read(read_length)
+        # connection_data['bytes_to_read'] -= len(request)
+        # if 'readed_data' not in connection_data:
+        #     connection_data['readed_data'] = request
+        # else:
+        #     connection_data['readed_data'] += request
 
-        if connection_data['bytes_to_read'] != 0:
-            return
+        # if connection_data['bytes_to_read'] != 0:
+        #     return
 
-        request = connection_data['readed_data']
-        connection_data['readed_data'] = ""
+        # request = connection_data['readed_data']
+        # connection_data['readed_data'] = ""
 
+        request = connection.read()
+        print request
         try:
             self.parseRequest(connection, request)
         except InvalidRequestError, e:
@@ -377,6 +379,7 @@ class MainServer(TcpServer):
             connection.send(Protocol.makeMessageFromDict(package))
 
 if __name__ == '__main__':
+    Logger.getInstance().setLogLevel(LogLevel.DEBUG)
     event_dispatcher = EventDispatcher()
     event_dispatcher.getPoller().setMaxTimeout(50)
     server = MainServer(event_dispatcher, ('0.0.0.0', 2500))

@@ -1,47 +1,15 @@
-from Socket import *
+import socket
+import errno
+from Socket import TcpSocket, EVENT_READ, EVENT_WRITE, EVENT_ERROR
 from Logger import *
 from Util import *
+from Error import ConnectionClosedError
+from Connection import TcpConnection
 
 _MAX_READ_SIZE = 256 * 1024
 _DEFAULT_KEEP_IDLE = 60
 _DEFAULT_KEEP_INTERVAL = 10
 _DRFAULT_KEEP_COUNT = 5
-
-class TcpConnection(object):
-    def __init__(self, tcpSocket):
-        self._socket = tcpSocket
-        self._user_data = {}
-        self._remote_addr = tcpSocket.getRemoteAddr()
-
-    def read(self, length = _MAX_READ_SIZE):
-        return self._socket.recv(length)
-
-    def peek(self, length = _MAX_READ_SIZE):
-        return self._socket.peek(length)
-
-    def send(self, data):
-        self._socket.send(data)
-
-    def getRemoteAddr(self):
-        return self._remote_addr
-
-    def getRemoteIp(self):
-        return self._remote_addr[0]
-
-    def getRemotePort(self):
-        return self._remote_addr[1]
-
-    def userData(self):
-        return self._user_data
-
-    def __getitem__(self, key):
-        return self._user_data[key]
-
-    def __setitem__(self, key, value):
-        self._user_data[key] = value
-
-    def __delitem__(self, key):
-        del self._user_data[key]
 
 class TcpServer(object):
     def __init__(self, event_dispatcher, addr):
@@ -76,19 +44,24 @@ class TcpServer(object):
 
         # set up callbacks
         tcpSock.onRead(lambda: self._handleRead(connection))
-        tcpSock.onError(lambda: self._handleError(connection))
+        tcpSock.onError(lambda: self._handleError(connection, None))
 
         self._event_dispatcher.getPoller().addSocket(tcpSock)
         self._connections.append(connection)
         TN_INFO("New connection established.")
 
     def _handleRead(self, connection):
-        # test whether the connection has closed
-        result = connection.peek(1024)
-        if result == "":  # connection closed
+        try:
+            if connection.tryReadNextPackage():
+                self._onRead_callback(connection)
+        except ConnectionClosedError:
             self._handleConnClose(connection)
-        else:
-            self._onRead_callback(connection)
+        except socket.error, e:
+            if e.errno == errno.ECONNRESET:
+                # regard connection reset as normally connection close
+                self._handleConnClose(connection) 
+            else:
+                self._handleError(connection, e)
 
     def _handleConnClose(self, connection):
         TN_INFO("connection to " + 
@@ -98,10 +71,12 @@ class TcpServer(object):
         self._connections.remove(connection)
         self._event_dispatcher.getPoller().removeSocket(connection._socket)
 
-    def _handleError(self, connection):
+    def _handleError(self, connection, error):
+        if error is None:
+            error = connection.getError()
         TN_INFO("connection to " + 
             Util.addrToStr(connection.getRemoteAddr()) +
-            " encountered an error.")
+            " encountered an error: " + str(error))
         self._onError_callback(connection)
         self._connections.remove(connection)
         self._event_dispatcher.getPoller().removeSocket(connection._socket)

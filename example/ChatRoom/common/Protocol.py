@@ -10,17 +10,8 @@ class Code:
 
 class Protocol:
     @staticmethod
-    def makeMessage(data):
-        utf8data = data.encode('utf-8')
-        length = len(utf8data)
-        message = bytearray(length + 4)
-        pack_into("!l", message, 0, length) # write length into message in network order
-        pack_into("!" + str(length) + "s", message, 4, utf8data) # write utf8data into message 
-        return message
-
-    @staticmethod
     def makeMessageFromDict(d):
-        return Protocol.makeMessage(dumps(d))
+        return dumps(d)
 
     @staticmethod
     def isResponse(message):

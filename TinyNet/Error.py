@@ -11,4 +11,7 @@ class TinyNetError(Exception):
         super(TinyNetError, self).__init__(message)
         self._code = code
 
+class ConnectionClosedError(Exception):
+    pass
+
 
