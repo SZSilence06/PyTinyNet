@@ -72,6 +72,9 @@ elif _sysType == 'Linux':
                 if(event & EVENT_WRITE):
                     socket.handleWrite()
 
+        def peekEvents(self):
+            raise NotImplementedError
+
 class PollerSelect(PollerImpl):
     def __init__(self):
         self._living_sockets = {}
@@ -107,6 +110,18 @@ class PollerSelect(PollerImpl):
 
     def waitEvents(self):
         result = select.select(self._rlist, self._wlist, self._xlist, self._timeout)
+        rlist = result[0]
+        wlist = result[1]
+        xlist = result[2]
+        for fd in rlist:
+            self._living_sockets[fd].handleRead()
+        for fd in wlist:
+            self._living_sockets[fd].handleWrite()
+        for fd in xlist:
+            self._living_sockets[fd].handleError()
+
+    def peekEvents(self):
+        result = select.select(self._rlist, self._wlist, self._xlist, 0)
         rlist = result[0]
         wlist = result[1]
         xlist = result[2]
@@ -151,6 +166,9 @@ class Poller(object):
 
     def waitEvents(self):
         self._poller.waitEvents()
+
+    def peekEvents(self):
+        self._poller.peekEvents()
 
 
 

@@ -18,6 +18,7 @@ class TcpServer(object):
         self._onRead_callback = lambda connection: None
         self._onConnClose_callback = lambda connection: None
         self._onError_callback = lambda connection: None
+        self._onShutdown_callback = lambda: None
         self._connections = []
 
         self._keep_idle = _DEFAULT_KEEP_IDLE
@@ -29,6 +30,7 @@ class TcpServer(object):
         self._socket.onRead(lambda : self._handleAccept())
         self._socket.setEvents(EVENT_READ)
         self._event_dispatcher.getPoller().addSocket(self._socket)
+        self._event_dispatcher.addServer(self)
         TN_INFO("TCP server started. Listening on " + self._socket.getIp() 
             + ":" + str(self._socket.getPort()))
 
@@ -36,6 +38,7 @@ class TcpServer(object):
         socketObj, addr = self._socket.accept()
         tcpSock = TcpSocket.createFrom(socketObj)
         tcpSock.setEvents(EVENT_READ | EVENT_ERROR)
+        tcpSock.setNonBlock(True)
         tcpSock.keepAlive()
         tcpSock.setKeepIdle(self._keep_idle)
         tcpSock.setKeepInterval(self._keep_interval)
@@ -59,6 +62,7 @@ class TcpServer(object):
         except socket.error, e:
             if e.errno == errno.ECONNRESET:
                 # regard connection reset as normally connection close
+                TN_DEBUG('connection to ' + Util.addrToStr(connection.getRemoteAddr()) + ' reset.')
                 self._handleConnClose(connection) 
             else:
                 self._handleError(connection, e)
@@ -70,6 +74,7 @@ class TcpServer(object):
         self._onConnClose_callback(connection)
         self._connections.remove(connection)
         self._event_dispatcher.getPoller().removeSocket(connection._socket)
+        connection.close()
 
     def _handleError(self, connection, error):
         if error is None:
@@ -81,6 +86,11 @@ class TcpServer(object):
         self._connections.remove(connection)
         self._event_dispatcher.getPoller().removeSocket(connection._socket)
 
+    def shutdown(self):
+        for connection in self._connections:
+            self._handleConnClose(connection)
+        TN_INFO('TCP server ' + self._socket.getIp() + ":" + str(self._socket.getPort()) + ' shut down.')
+
     def onRead(self, callback):
         self._onRead_callback = callback
 
@@ -89,6 +99,9 @@ class TcpServer(object):
 
     def onError(self, callback):
         self._onError_callback = callback
+
+    def onShutdown(self, callback):
+        self._onShutdown_callback = callback
 
     def setKeepIdle(self, value):
         self._keep_idle = value

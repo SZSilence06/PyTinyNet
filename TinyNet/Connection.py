@@ -29,6 +29,9 @@ class TcpConnection(object):
         TN_DEBUG('send length %d complete pacakge : ' % len(data) + repr(self._sendbuf))
         self._socket.send(self._sendbuf)
 
+    def close(self):
+        self._socket.close()
+
     def getSocket(self):
         return self._socket
 
