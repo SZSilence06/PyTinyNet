@@ -11,14 +11,17 @@ class TcpConnection(object):
         self._sendbuf = []
         self._recvbuf = []
         self._nextPackageSize = 0
+        self._received_complete_package = False
 
     def read(self, encode=None):
         '''get message from receive buffer'''
+        TN_DEBUG('received complete pacakge : ' + repr(self._recvbuf))
         result = ''.join(self._recvbuf)
         self._recvbuf = []
         if encode:
             result = result.decode(encode)
-        TN_DEBUG('received complete pacakge : ' + repr(self._sendbuf))
+        self._nextPackageSize = 0
+        self._received_complete_package = False
         return result
 
     def send(self, data, encode=None):
@@ -26,7 +29,7 @@ class TcpConnection(object):
             data = data.encode(encode)
         self._sendbuf = struct.pack('!' + Config.PACKAGE_SIZE_FORMAT, len(data))
         self._sendbuf += data
-        TN_DEBUG('send length %d complete pacakge : ' % len(data) + repr(self._sendbuf))
+        # TN_DEBUG('send length %d complete pacakge : ' % len(data) + repr(data))
         self._socket.send(self._sendbuf)
 
     def close(self):
@@ -63,8 +66,11 @@ class TcpConnection(object):
         ''' read socket to get a complete package.
         return true if complete package has been read.
         '''
+        if self._received_complete_package:
+            # there already exists a complete package to be read
+            return True
 
-        if len(self._recvbuf) == 0:
+        if self._nextPackageSize == 0:
             # get a new package, try to read package length
             ssize = Config.PACKAGE_SIZE_SIZE
             data = self._socket.peek(ssize)
@@ -79,8 +85,10 @@ class TcpConnection(object):
 
         # read remaining part of the next package
         data = self._socket.recv(self._nextPackageSize - len(self._recvbuf))
-        TN_DEBUG('received data : ' + str(data))
+        TN_DEBUG('received data : ' + repr(data))
         self._recvbuf += data
-        return len(self._recvbuf) == self._nextPackageSize
+        if len(self._recvbuf) == self._nextPackageSize:
+            self._received_complete_package = True
+        return self._received_complete_package
 
     

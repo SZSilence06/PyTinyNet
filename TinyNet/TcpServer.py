@@ -51,11 +51,11 @@ class TcpServer(object):
 
         self._event_dispatcher.getPoller().addSocket(tcpSock)
         self._connections.append(connection)
-        TN_INFO("New connection established.")
+        TN_INFO("New connection from " + Util.addrToStr(tcpSock.getRemoteAddr())  + " established.")
 
     def _handleRead(self, connection):
         try:
-            if connection.tryReadNextPackage():
+            while connection.tryReadNextPackage():
                 self._onRead_callback(connection)
         except ConnectionClosedError:
             self._handleConnClose(connection)
@@ -63,7 +63,10 @@ class TcpServer(object):
             if e.errno == errno.ECONNRESET:
                 # regard connection reset as normally connection close
                 TN_DEBUG('connection to ' + Util.addrToStr(connection.getRemoteAddr()) + ' reset.')
-                self._handleConnClose(connection) 
+                self._handleConnClose(connection)
+            elif e.errno == errno.EWOULDBLOCK:
+                # no data to read
+                return 
             else:
                 self._handleError(connection, e)
 
