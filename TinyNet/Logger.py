@@ -2,6 +2,7 @@ import thread
 import inspect
 from StringIO import StringIO
 from time import gmtime, strftime
+import sys
 
 class LogLevel:  
     NONE = 0
@@ -31,6 +32,7 @@ def __LOG(level, message):
 
 def TN_FATAL(message):
     __LOG(LogLevel.FATAL, message)
+    sys.exit()
 
 def TN_ERROR(message):
     __LOG(LogLevel.ERROR, message)

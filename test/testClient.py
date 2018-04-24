@@ -10,7 +10,7 @@ from TinyNet.Logger import Logger, LogLevel
 if __name__ == '__main__':
     Logger.getInstance().setLogLevel(LogLevel.DEBUG)
     client = TcpClient()
-    client.connect(("127.0.0.1", 3000));
+    client.connect(("127.0.0.1", 3000))
     data = raw_input("enter data to send:")
     client.send(data)
     client.send(',cnm')

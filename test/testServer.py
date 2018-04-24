@@ -10,7 +10,7 @@ from TinyNet.Logger import Logger, LogLevel
 
 def serverOnRead(connection):
     print "Received data : " + connection.read()
-    connection.send("fuck you") 
+    connection.send("hello") 
 
 if __name__ == '__main__':
     Logger.getInstance().setLogLevel(LogLevel.DEBUG)

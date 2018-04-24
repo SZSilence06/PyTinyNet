@@ -67,7 +67,10 @@ class Socket(object):
         self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1 if value else 0)
 
     def setNonBlock(self, nonBlock):
-        self._socket.setblocking(0)
+        if nonBlock:
+            self._socket.setblocking(0)
+        else:
+            self._socket.setblocking(1)
         self._nonBlock = nonBlock
 
 class TcpSocket(Socket):
@@ -127,7 +130,7 @@ class TcpSocket(Socket):
         return self.getRemoteAddr()[1]
 
     def getPendingError(self):
-        return error(self._socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR))
+        return socket.error(self._socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR))
 
     def setKeepIdle(self, value):
         if _sysType == 'Windows':

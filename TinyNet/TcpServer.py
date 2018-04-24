@@ -60,15 +60,7 @@ class TcpServer(object):
         except ConnectionClosedError:
             self._handleConnClose(connection)
         except socket.error, e:
-            if e.errno == errno.ECONNRESET:
-                # regard connection reset as normally connection close
-                TN_DEBUG('connection to ' + Util.addrToStr(connection.getRemoteAddr()) + ' reset.')
-                self._handleConnClose(connection)
-            elif e.errno == errno.EWOULDBLOCK:
-                # no data to read
-                return 
-            else:
-                self._handleError(connection, e)
+            self._handleError(connection, e)
 
     def _handleConnClose(self, connection):
         TN_INFO("connection to " + 
